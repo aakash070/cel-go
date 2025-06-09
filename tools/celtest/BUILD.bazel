@@ -67,7 +67,9 @@ go_test(
         "//common/types:go_default_library",
         "//common/types/ref:go_default_library",
         "//policy:go_default_library",
+        "//test:go_default_library",
         "//tools/compiler:go_default_library",
+        "@dev_cel_expr//conformance/test:go_default_library",
         "@in_gopkg_yaml_v3//:go_default_library",
     ]
 )

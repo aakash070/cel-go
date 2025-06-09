@@ -257,7 +257,8 @@ func (p *tsParser) ParseYAML(path string) (*test.Suite, error) {
 	return testSuite, err
 }
 
-// DefaultTestSuiteParser returns a TestRunnerOption which configures the test runner with a test suite parser.
+// DefaultTestSuiteParser returns a TestRunnerOption which configures the test runner with
+// the default test suite parser.
 func DefaultTestSuiteParser(path string) TestRunnerOption {
 	return func(tr *TestRunner) (*TestRunner, error) {
 		if path == "" {
@@ -265,6 +266,15 @@ func DefaultTestSuiteParser(path string) TestRunnerOption {
 		}
 		tr.TestSuiteFilePath = path
 		tr.testSuiteParser = &tsParser{}
+		return tr, nil
+	}
+}
+
+// TestSuiteParserOption returns a TestRunnerOption which configures the test runner with
+// a custom test suite parser.
+func TestSuiteParserOption(p TestSuiteParser) TestRunnerOption {
+	return func(tr *TestRunner) (*TestRunner, error) {
+		tr.testSuiteParser = p
 		return tr, nil
 	}
 }
