@@ -233,11 +233,11 @@ type tsparser struct {
 	TestSuiteParser
 }
 
-func (p *tsparser) ParseTextproto(path string) (*conformancepb.TestSuite, error) {
+func (p *tsparser) ParseTextproto(_ string) (*conformancepb.TestSuite, error) {
 	return nil, nil
 }
 
-func (p *tsparser) ParseYAML(path string) (*test.Suite, error) {
+func (p *tsparser) ParseYAML(_ string) (*test.Suite, error) {
 	testCase := &test.Case{
 		Name: "sample test case",
 		Input: map[string]*test.InputValue{
