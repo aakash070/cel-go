@@ -533,3 +533,118 @@ func (hv heightVisitor) maxEntryHeight(entries ...EntryExpr) int {
 	}
 	return max
 }
+
+
+// Children returns a map from expression id to a list of the ids of its direct children.
+func Children(a *AST) map[int64][]int64 {
+	visitor := make(childrenVisitor)
+	PostOrderVisit(a.Expr(), visitor)
+	return visitor
+}
+
+type childrenVisitor map[int64][]int64
+
+func (cv childrenVisitor) VisitExpr(e Expr) {
+	cv[e.ID()] = make([]int64, 0)
+	switch e.Kind() {
+	case SelectKind:
+		cv[e.ID()] = append(cv[e.ID()], e.AsSelect().Operand().ID())
+	case CallKind:
+		if e.AsCall().IsMemberFunction() {
+			cv[e.ID()] = append(cv[e.ID()], e.AsCall().Target().ID())
+		}
+		for _, arg := range e.AsCall().Args() {
+			cv[e.ID()] = append(cv[e.ID()], arg.ID())
+		}
+	case ListKind:
+		for _, element := range e.AsList().Elements() {
+			cv[e.ID()] = append(cv[e.ID()], element.ID())
+		}
+	case MapKind:
+		for _, entry := range e.AsMap().Entries() {
+			cv[e.ID()] = append(cv[e.ID()], entry.ID())
+		}
+	case StructKind:
+		for _, field := range e.AsStruct().Fields() {
+			cv[e.ID()] = append(cv[e.ID()], field.ID())
+		}
+	case ComprehensionKind:
+		comp := e.AsComprehension()
+		cv[e.ID()] = append(cv[e.ID()], comp.IterRange().ID(), comp.AccuInit().ID(), comp.LoopCondition().ID(), comp.LoopStep().ID(), comp.Result().ID())
+	}
+}
+
+func (cv childrenVisitor) VisitEntryExpr(e EntryExpr) {
+	switch e.Kind() {
+	case MapEntryKind:
+		me := e.AsMapEntry()
+		cv[e.ID()] = append(cv[e.ID()], me.Key().ID(), me.Value().ID())
+	case StructFieldKind:
+		sf := e.AsStructField()
+		cv[e.ID()] = append(cv[e.ID()], sf.Value().ID())
+	}
+}
+
+// Parents returns a map from expression ID to its direct parent's ID.
+func Parents(a *AST) map[int64]int64 {
+	if a == nil {
+		return map[int64]int64{}
+	}
+	visitor := make(parentVisitor)
+	PostOrderVisit(a.Expr(), visitor)
+	return visitor
+}
+
+// parentVisitor is a visitor that populates a map from child ID to parent ID.
+type parentVisitor map[int64]int64
+
+// VisitExpr records the current expression's ID as the parent for its direct children expressions.
+func (pv parentVisitor) VisitExpr(e Expr) {
+	switch e.Kind() {
+	case SelectKind:
+		pv[e.AsSelect().Operand().ID()] = e.ID()
+	case CallKind:
+		c := e.AsCall()
+		if c.IsMemberFunction() {
+			pv[c.Target().ID()] = e.ID()
+		}
+		for _, arg := range c.Args() {
+			pv[arg.ID()] = e.ID()
+		}
+	case ListKind:
+		l := e.AsList()
+		for _, element := range l.Elements() {
+			pv[element.ID()] = e.ID()
+		}
+	case MapKind:
+		m := e.AsMap()
+		for _, entry := range m.Entries() {
+			pv[entry.ID()] = e.ID()
+		}
+	case StructKind:
+		s := e.AsStruct()
+		for _, field := range s.Fields() {
+			pv[field.ID()] = e.ID()
+		}
+	case ComprehensionKind:
+		comp := e.AsComprehension()
+		pv[comp.IterRange().ID()] = e.ID()
+		pv[comp.AccuInit().ID()] = e.ID()
+		pv[comp.LoopCondition().ID()] = e.ID()
+		pv[comp.LoopStep().ID()] = e.ID()
+		pv[comp.Result().ID()] = e.ID()
+	}
+}
+
+// VisitEntryExpr records the current entry expression's ID as the parent for its direct children.
+func (pv parentVisitor) VisitEntryExpr(e EntryExpr) {
+	switch e.Kind() {
+	case MapEntryKind:
+		me := e.AsMapEntry()
+		pv[me.Key().ID()] = e.ID()
+		pv[me.Value().ID()] = e.ID()
+	case StructFieldKind:
+		sf := e.AsStructField()
+		pv[sf.Value().ID()] = e.ID()
+	}
+}

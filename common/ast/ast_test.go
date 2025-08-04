@@ -364,6 +364,56 @@ func TestHeights(t *testing.T) {
 	}
 }
 
+func TestChildren(t *testing.T) {
+	tests := []struct {
+		expr     string
+		expected map[int64][]int64
+	}{
+		{`'a' == 'b'`, map[int64][]int64{1: {}, 2: {1, 3}, 3: {}}},
+		{`'a'.size()`, map[int64][]int64{1: {}, 2: {1}}},
+		{`[1, 2].size()`, map[int64][]int64{1: {2, 3}, 2: {}, 3: {}, 4: {1}}},
+		{`size('a')`, map[int64][]int64{1: {2}, 2: {}}},
+		{`has({'a': 1}.a)`, map[int64][]int64{2: {3}, 3: {4, 5}, 4: {}, 5: {}, 7: {2}}},
+		{`{'a': 1}`, map[int64][]int64{1: {2}, 2: {3, 4}, 3: {}, 4: {}}},
+		{`{'a': 1}['a']`, map[int64][]int64{1: {2}, 2: {3, 4}, 3: {}, 4: {}, 5: {1, 6}, 6: {}}},
+		{`[1, 2, 3].exists(i, i % 2 == 1)`, map[int64][]int64{1: {2, 3, 4}, 2: {}, 3: {}, 4: {}, 7: {}, 8: {7, 9}, 9: {}, 10: {8, 11}, 11: {}, 12: {}, 13: {}, 14: {13}, 15: {14}, 16: {}, 17: {16, 10}, 18: {}, 19: {1, 12, 15, 17, 18}}},
+		{`google.expr.proto3.test.TestAllTypes{}`, map[int64][]int64{1: {}}},
+		{`google.expr.proto3.test.TestAllTypes{repeated_int32: [1, 2]}`, map[int64][]int64{1: {2}, 2: {3}, 3: {4, 5}, 4: {}, 5: {}}},
+	}
+	for _, tst := range tests {
+		checked := mustTypeCheck(t, tst.expr)
+		children := ast.Children(checked)
+		if !reflect.DeepEqual(children, tst.expected) {
+			t.Errorf("ast.Children(%q) got %v, wanted %v", tst.expr, children, tst.expected)
+		}
+	}
+}
+
+func TestParents(t *testing.T) {
+	tests := []struct {
+		expr     string
+		expected map[int64]int64
+	}{
+		{`'a' == 'b'`, map[int64]int64{1: 2, 3: 2}},
+		{`'a'.size()`, map[int64]int64{1: 2}},
+		{`[1, 2].size()`, map[int64]int64{2: 1, 3: 1, 1: 4}},
+		{`size('a')`, map[int64]int64{2: 1}},
+		{`has({'a': 1}.a)`, map[int64]int64{3: 2, 4: 3, 5: 3, 2: 7}},
+		{`{'a': 1}`, map[int64]int64{2: 1, 3: 2, 4: 2}},
+		{`{'a': 1}['a']`, map[int64]int64{2: 1, 3: 2, 4: 2, 1: 5, 6: 5}},
+		{`[1, 2, 3].exists(i, i % 2 == 1)`, map[int64]int64{2: 1, 3: 1, 4: 1, 7: 8, 9: 8, 8: 10, 11: 10, 13: 14, 14: 15, 16: 17, 10: 17, 1: 19, 12: 19, 15: 19, 17: 19, 18: 19}},
+		{`google.expr.proto3.test.TestAllTypes{}`, map[int64]int64{}},
+		{`google.expr.proto3.test.TestAllTypes{repeated_int32: [1, 2]}`, map[int64]int64{2: 1, 3: 2, 4: 3, 5: 3}},
+	}
+	for _, tst := range tests {
+		checked := mustTypeCheck(t, tst.expr)
+		parents := ast.Parents(checked)
+		if !reflect.DeepEqual(parents, tst.expected) {
+			t.Errorf("ast.Parents(%q) got %v, wanted %v", tst.expr, parents, tst.expected)
+		}
+	}
+}
+
 func mockRelativeSource(t testing.TB, text string, lineOffsets []int32, baseLocation common.Location) common.Source {
 	t.Helper()
 	return &mockSource{
